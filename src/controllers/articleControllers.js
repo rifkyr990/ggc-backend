@@ -2,6 +2,7 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const streamifier = require('streamifier');
 const cloudinary = require('../utils/cloudinary'); // Pastikan sudah setup cloudinary
+const { parse } = require('dotenv');
 
 const uploadToCloudinary = (buffer, folder) => {
     return new Promise((resolve, reject) => {
@@ -53,18 +54,35 @@ const createArticle = async (req, res) => {
 
 // Get all Articles
 const getAllArticles = async (req, res) => {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 5;
+    const search = req.query.search || '';
+    const skip = (page - 1) * limit;
+
     try {
-        const articles = await prisma.article.findMany({
-        include: {
-            author: true,
-        },
-        orderBy: {
-            createdAt: 'desc',
-        },
+        const where = search
+            ? { title: { contains: search, mode: 'insensitive' } }
+        : {};
+
+        const [articles, total] = await Promise.all([
+            prisma.article.findMany({
+                where,
+                skip,
+                take: limit,
+                orderBy: { createdAt: 'desc' },
+                include: { author: true },
+            }),
+                prisma.article.count({ where }),
+            ]);
+
+        res.json({
+            data: articles,
+            total,
+            page,
+            totalPages: Math.ceil(total / limit),
         });
-        res.json(articles);
-    } catch (error) {
-        res.status(500).json({ error: 'Gagal mengambil data article' });
+    } catch (err) {
+        res.status(500).json({ error: 'Gagal mengambil artikel', detail: err.message });
     }
 };
 
