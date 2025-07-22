@@ -36,21 +36,25 @@ model Perumahan {
   thumbnail       String
   gambarLainnya String[]
   deskripsi       String
-  spesifikasi     SpesifikasiPerumahan[]
+  spesifikasi     SpesifikasiPerumahan? // Relasi one-to-one
+  spesifikasiId    Int?                   // Foreign key untuk spesifikasi
   fasilitas       FasilitasPerumahan[]     // Relasi many-to-many
   createdAt       DateTime                 @default(now())
 }
 
 model SpesifikasiPerumahan {
-  id             Int        @id @default(autoincrement())
-  perumahan      Perumahan  @relation(fields: [perumahanId], references: [id])
-  perumahanId    Int
-  luasTanah      Int
-  luasBangunan   Int
-  kamarTidur     Int
-  kamarMandi     Int
-  garasi         Boolean
-  listrik        String
+  id              Int        @id @default(autoincrement())
+  luasTanah       Int        // Contoh: 120 m²
+  luasBangunan    Int        // Contoh: 100 m²
+  kamarTidur      Int        // Contoh: 3 kamar tidur
+  kamarMandi      Int
+  garasi          Boolean
+  listrik         String     // Contoh: "2200 Watt"
+  // Relasi ke Perumahan
+  perumahan       Perumahan @relation(fields: [perumahanId], references: [id])
+  perumahanId     Int
+
+  @@unique([perumahanId]) // Pastikan hanya ada satu spesifikasi per perumahan
 }
 
 
