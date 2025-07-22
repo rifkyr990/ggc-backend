@@ -5,6 +5,7 @@ const { PrismaClient } = require('@prisma/client');
 const userRoutes = require('./routes/user');
 const authRoutes = require('./routes/auth');
 const perumahanRoutes = require('./routes/perumahan');
+const articlesRoutes = require('./routes/article');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,6 +14,7 @@ app.use(express.json());
 
 app.use('/users', userRoutes);
 app.use('/auth', authRoutes);
+app.use('/articles', articlesRoutes);
 app.use('/perumahan', perumahanRoutes);
 
 app.get('/', async (req, res) => {
