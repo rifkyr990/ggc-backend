@@ -1,0 +1,72 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id       Int    @id @default(autoincrement())
+  name     String
+  email    String @unique
+  password String
+  articles  Article[]
+  createdAt DateTime @default(now())
+}
+
+model Article {
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String
+  category  String
+  thumbnail  String
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  Int
+  createdAt DateTime @default(now())
+}
+
+
+model Perumahan {
+  id              Int                      @id @default(autoincrement())
+  nama            String
+  lokasi          String
+  hargaMulai      Int
+  thumbnail       String
+  gambarLainnya String[]
+  deskripsi       String
+  spesifikasi     SpesifikasiPerumahan[]
+  fasilitas       FasilitasPerumahan[]     // Relasi many-to-many
+  createdAt       DateTime                 @default(now())
+}
+
+model SpesifikasiPerumahan {
+  id             Int        @id @default(autoincrement())
+  perumahan      Perumahan  @relation(fields: [perumahanId], references: [id])
+  perumahanId    Int
+  luasTanah      Int
+  luasBangunan   Int
+  kamarTidur     Int
+  kamarMandi     Int
+  garasi         Boolean
+  listrik        String
+}
+
+
+model Fasilitas {
+  id          Int                  @id @default(autoincrement())
+  nama        String               // Contoh: "Kolam Renang"
+  iconUrl     String               // Contoh: URL/path ke icon
+  perumahan   FasilitasPerumahan[] // Relasi many-to-many
+}
+
+model FasilitasPerumahan {
+  id           Int        @id @default(autoincrement())
+  perumahan    Perumahan  @relation(fields: [perumahanId], references: [id])
+  fasilitas    Fasilitas  @relation(fields: [fasilitasId], references: [id])
+  perumahanId  Int
+  fasilitasId  Int
+
+  @@unique([perumahanId, fasilitasId]) // Hindari duplikasi
+}
