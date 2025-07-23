@@ -18,6 +18,7 @@ const uploadToCloudinary = (buffer, folder) => {
 };
 
 // CREATE
+
 const createPerumahan = async (req, res) => {
   try {
     const {
@@ -29,12 +30,14 @@ const createPerumahan = async (req, res) => {
       fasilitasIds,
     } = req.body;
 
+    // Validasi data dasar
     if (!nama || !lokasi || !hargaMulai || !deskripsi || !spesifikasi || !fasilitasIds) {
       return res.status(400).json({
         error: "Field wajib: nama, lokasi, hargaMulai, deskripsi, spesifikasi, fasilitasIds"
       });
     }
 
+    // Parsing spesifikasi
     let parsedSpesifikasi, parsedFasilitasIds;
 
     try {
@@ -46,6 +49,7 @@ const createPerumahan = async (req, res) => {
       return res.status(400).json({ error: "Format spesifikasi tidak valid", detail: e.message });
     }
 
+    // Parsing fasilitasIds
     try {
       parsedFasilitasIds = typeof fasilitasIds === 'string' ? JSON.parse(fasilitasIds) : fasilitasIds;
       if (!Array.isArray(parsedFasilitasIds)) {
@@ -55,21 +59,22 @@ const createPerumahan = async (req, res) => {
       return res.status(400).json({ error: "Format fasilitasIds tidak valid", detail: e.message });
     }
 
+    // Validasi thumbnail
     if (!req.files || !req.files['thumbnail'] || req.files['thumbnail'].length === 0) {
       return res.status(400).json({ error: "Thumbnail wajib diupload" });
     }
 
     const thumbnailBuffer = req.files['thumbnail'][0].buffer;
-    const gambarLainnyaFiles = req.files['gambarLainnya'] || [];
-
     const thumbnailUrl = await uploadToCloudinary(thumbnailBuffer, 'perumahan/thumbnail');
 
+    const gambarLainnyaFiles = req.files['gambarLainnya'] || [];
     const gambarLainnyaUrls = await Promise.all(
       gambarLainnyaFiles.map(file =>
         uploadToCloudinary(file.buffer, 'perumahan/gambarLainnya')
       )
     );
 
+    // Buat entitas perumahan beserta relasi
     const perumahan = await prisma.perumahan.create({
       data: {
         nama,
@@ -78,21 +83,32 @@ const createPerumahan = async (req, res) => {
         deskripsi,
         thumbnail: thumbnailUrl,
         gambarLainnya: gambarLainnyaUrls,
+
         spesifikasi: {
-          create: parsedSpesifikasi,
+          create: {
+            luasTanah: parsedSpesifikasi.luasTanah,
+            luasBangunan: parsedSpesifikasi.luasBangunan,
+            kamarTidur: parsedSpesifikasi.kamarTidur,
+            kamarMandi: parsedSpesifikasi.kamarMandi,
+            garasi: parsedSpesifikasi.garasi,
+            listrik: parsedSpesifikasi.listrik,
+          }
         },
+
         fasilitas: {
-          create: parsedFasilitasIds.map(id => ({
-            fasilitasId: id,
-          })),
-        },
+          create: parsedFasilitasIds.map(fasilitasId => ({
+            fasilitas: {
+              connect: { id: fasilitasId }
+            }
+          }))
+        }
       },
       include: {
         spesifikasi: true,
         fasilitas: {
-          include: { fasilitas: true },
-        },
-      },
+          include: { fasilitas: true }
+        }
+      }
     });
 
     res.status(201).json({ success: true, data: perumahan });
@@ -105,10 +121,10 @@ const createPerumahan = async (req, res) => {
   }
 };
 
-// UPDATE
-const updatePerumahan = async (req, res) => {
-  const id = parseInt(req.params.id);
 
+// UPDATE
+
+const updatePerumahan = async (req, res) => {
   try {
     const {
       nama,
@@ -119,14 +135,28 @@ const updatePerumahan = async (req, res) => {
       fasilitasIds,
     } = req.body;
 
-    const existing = await prisma.perumahan.findUnique({ where: { id } });
-    if (!existing) return res.status(404).json({ error: "Perumahan tidak ditemukan" });
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ error: "ID perumahan harus disediakan" });
+    }
+
+    const perumahanId = parseInt(id);
+
+    const existingPerumahan = await prisma.perumahan.findUnique({
+      where: { id: perumahanId },
+      include: { spesifikasi: true, fasilitas: true },
+    });
+
+    if (!existingPerumahan) {
+      return res.status(404).json({ error: "Perumahan tidak ditemukan" });
+    }
 
     let parsedSpesifikasi, parsedFasilitasIds;
 
     try {
       parsedSpesifikasi = typeof spesifikasi === 'string' ? JSON.parse(spesifikasi) : spesifikasi;
-      if (typeof parsedSpesifikasi !== 'object' || Array.isArray(parsedSpesifikasi)) {
+      if (parsedSpesifikasi && (typeof parsedSpesifikasi !== 'object' || Array.isArray(parsedSpesifikasi))) {
         return res.status(400).json({ error: "Format spesifikasi harus berupa object" });
       }
     } catch (e) {
@@ -135,22 +165,22 @@ const updatePerumahan = async (req, res) => {
 
     try {
       parsedFasilitasIds = typeof fasilitasIds === 'string' ? JSON.parse(fasilitasIds) : fasilitasIds;
-      if (!Array.isArray(parsedFasilitasIds)) {
+      if (parsedFasilitasIds && !Array.isArray(parsedFasilitasIds)) {
         return res.status(400).json({ error: "Format fasilitasIds harus berupa array" });
       }
     } catch (e) {
       return res.status(400).json({ error: "Format fasilitasIds tidak valid", detail: e.message });
     }
 
-    let thumbnailUrl = existing.thumbnail;
-    let gambarLainnyaUrls = existing.gambarLainnya || [];
-
-    if (req.files && req.files['thumbnail']) {
-      const thumbnailBuffer = req.files['thumbnail'][0].buffer;
-      thumbnailUrl = await uploadToCloudinary(thumbnailBuffer, 'perumahan/thumbnail');
+    // Upload thumbnail jika ada file baru
+    let thumbnailUrl = existingPerumahan.thumbnail;
+    if (req.files?.['thumbnail']?.[0]) {
+      thumbnailUrl = await uploadToCloudinary(req.files['thumbnail'][0].buffer, 'perumahan/thumbnail');
     }
 
-    if (req.files && req.files['gambarLainnya']) {
+    // Upload gambar lainnya jika ada file baru
+    let gambarLainnyaUrls = existingPerumahan.gambarLainnya;
+    if (req.files?.['gambarLainnya']?.length > 0) {
       gambarLainnyaUrls = await Promise.all(
         req.files['gambarLainnya'].map(file =>
           uploadToCloudinary(file.buffer, 'perumahan/gambarLainnya')
@@ -158,49 +188,49 @@ const updatePerumahan = async (req, res) => {
       );
     }
 
-    // Update data utama perumahan
-    await prisma.perumahan.update({
-      where: { id },
+    // Update perumahan
+    const updatedPerumahan = await prisma.perumahan.update({
+      where: { id: perumahanId },
       data: {
         nama,
         lokasi,
-        hargaMulai: parseInt(hargaMulai),
+        hargaMulai: hargaMulai ? parseInt(hargaMulai) : undefined,
         deskripsi,
         thumbnail: thumbnailUrl,
         gambarLainnya: gambarLainnyaUrls,
+
+        spesifikasi: parsedSpesifikasi
+          ? {
+              upsert: {
+                update: {
+                  luasTanah: parsedSpesifikasi.luasTanah,
+                  luasBangunan: parsedSpesifikasi.luasBangunan,
+                  kamarTidur: parsedSpesifikasi.kamarTidur,
+                  kamarMandi: parsedSpesifikasi.kamarMandi,
+                  garasi: parsedSpesifikasi.garasi,
+                  listrik: parsedSpesifikasi.listrik,
+                },
+                create: {
+                  luasTanah: parsedSpesifikasi.luasTanah,
+                  luasBangunan: parsedSpesifikasi.luasBangunan,
+                  kamarTidur: parsedSpesifikasi.kamarTidur,
+                  kamarMandi: parsedSpesifikasi.kamarMandi,
+                  garasi: parsedSpesifikasi.garasi,
+                  listrik: parsedSpesifikasi.listrik,
+                },
+              }
+            }
+          : undefined,
+
+        fasilitas: parsedFasilitasIds
+          ? {
+              deleteMany: {}, // Hapus semua relasi lama
+              create: parsedFasilitasIds.map(fasilitasId => ({
+                fasilitasId: fasilitasId,
+              })),
+            }
+          : undefined,
       },
-    });
-
-    // Update atau buat spesifikasi (one-to-one)
-    const existingSpesifikasi = await prisma.spesifikasiPerumahan.findUnique({
-      where: { perumahanId: id },
-    });
-
-    if (existingSpesifikasi) {
-      await prisma.spesifikasiPerumahan.update({
-        where: { perumahanId: id },
-        data: parsedSpesifikasi,
-      });
-    } else {
-      await prisma.spesifikasiPerumahan.create({
-        data: {
-          ...parsedSpesifikasi,
-          perumahanId: id,
-        },
-      });
-    }
-
-    // Hapus dan ganti fasilitas
-    await prisma.fasilitasPerumahan.deleteMany({ where: { perumahanId: id } });
-    await prisma.fasilitasPerumahan.createMany({
-      data: parsedFasilitasIds.map(fasilitasId => ({
-        perumahanId: id,
-        fasilitasId,
-      })),
-    });
-
-    const updated = await prisma.perumahan.findUnique({
-      where: { id },
       include: {
         spesifikasi: true,
         fasilitas: {
@@ -209,7 +239,7 @@ const updatePerumahan = async (req, res) => {
       },
     });
 
-    res.json({ success: true, data: updated });
+    res.status(200).json({ success: true, data: updatedPerumahan });
   } catch (error) {
     console.error("Error updating perumahan:", error);
     res.status(500).json({
@@ -219,24 +249,62 @@ const updatePerumahan = async (req, res) => {
   }
 };
 
+
+
+// ERROR: PERBAIKI FASILITAS PADA UPDATE CONTROLLER
+
+
 // Read all Perumahan lengkap dengan relasi
 const getAllPerumahan = async (req, res) => {
   try {
-    const perumahans = await prisma.perumahan.findMany({
-      include: {
-        spesifikasi: true,
-        fasilitas: {
-          include: {
-            fasilitas: true,
+    const page = parseInt(req.query.page) || 1;
+    const limit = 5; // jumlah item per halaman
+    const offset = (page - 1) * limit;
+    const search = req.query.search || '';
+
+    const where = search
+      ? {
+          nama: {
+            contains: search,
+            mode: 'insensitive', // agar case-insensitive
           },
-        },
+        }
+      : {};
+
+    const [data, total] = await Promise.all([
+      prisma.perumahan.findMany({
+  where,
+  skip: offset,
+  take: limit,
+  orderBy: {
+    createdAt: 'desc',
+  },
+  include: {
+    spesifikasi: true,
+    fasilitas: {
+      include: {
+        fasilitas: true,
       },
+    },
+  },
+}),
+      prisma.perumahan.count({ where }),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    res.json({
+      data,
+      total,
+      totalPages,
+      currentPage: page,
     });
-    res.json(perumahans);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch perumahan' });
+  } catch (err) {
+    console.error('Error getAllPerumahan:', err);
+    res.status(500).json({ error: 'Gagal mengambil data perumahan' });
   }
 };
+
 
 // Read single Perumahan by id
 const getPerumahanById = async (req, res) => {
@@ -261,112 +329,6 @@ const getPerumahanById = async (req, res) => {
 };
 
 // Update Perumahan + spesifikasi + fasilitas (replace semua fasilitas dan spesifikasi)
-// const updatePerumahan = async (req, res) => {
-//   const id = parseInt(req.params.id);
-
-//   try {
-//     // Validasi dasar
-//     if (!req.body) {
-//       return res.status(400).json({ error: "Request body tidak boleh kosong" });
-//     }
-
-//     const {
-//       nama,
-//       lokasi,
-//       hargaMulai,
-//       deskripsi,
-//       spesifikasi,
-//       fasilitasIds,
-//     } = req.body;
-
-//     let parsedSpesifikasi, parsedFasilitasIds;
-
-//     try {
-//       parsedSpesifikasi = typeof spesifikasi === 'string' ? JSON.parse(spesifikasi) : spesifikasi;
-//       if (!Array.isArray(parsedSpesifikasi)) {
-//         return res.status(400).json({ error: "Format spesifikasi harus berupa array" });
-//       }
-//     } catch (e) {
-//       return res.status(400).json({
-//         error: "Format spesifikasi tidak valid",
-//         detail: e.message
-//       });
-//     }
-
-//     try {
-//       parsedFasilitasIds = typeof fasilitasIds === 'string' ? JSON.parse(fasilitasIds) : fasilitasIds;
-//       if (!Array.isArray(parsedFasilitasIds)) {
-//         return res.status(400).json({ error: "Format fasilitasIds harus berupa array" });
-//       }
-//     } catch (e) {
-//       return res.status(400).json({
-//         error: "Format fasilitasIds tidak valid",
-//         detail: e.message
-//       });
-//     }
-
-//     const existing = await prisma.perumahan.findUnique({ where: { id } });
-//     if (!existing) return res.status(404).json({ error: "Perumahan tidak ditemukan" });
-
-//     // File handling
-//     let thumbnailUrl = existing.thumbnail;
-//     let gambarLainnyaUrls = existing.gambarLainnya || [];
-
-//     if (req.files && req.files['thumbnail']) {
-//       const thumbnailBuffer = req.files['thumbnail'][0].buffer;
-//       thumbnailUrl = await uploadToCloudinary(thumbnailBuffer, 'perumahan/thumbnail');
-//     }
-
-//     if (req.files && req.files['gambarLainnya']) {
-//       gambarLainnyaUrls = await Promise.all(
-//         req.files['gambarLainnya'].map(file =>
-//           uploadToCloudinary(file.buffer, 'perumahan/gambarLainnya')
-//         )
-//       );
-//     }
-
-//     // Hapus relasi lama
-//     await prisma.spesifikasiPerumahan.deleteMany({ where: { perumahanId: id } });
-//     await prisma.fasilitasPerumahan.deleteMany({ where: { perumahanId: id } });
-
-//     // Update data utama
-//     const updated = await prisma.perumahan.update({
-//       where: { id },
-//       data: {
-//         nama,
-//         lokasi,
-//         hargaMulai: parseInt(hargaMulai),
-//         deskripsi,
-//         thumbnail: thumbnailUrl,
-//         gambarLainnya: gambarLainnyaUrls,
-//         spesifikasi: {
-//           create: parsedSpesifikasi,
-//         },
-//         fasilitas: {
-//           create: parsedFasilitasIds.map(fasilitasId => ({
-//             fasilitasId,
-//           })),
-//         },
-//       },
-//       include: {
-//         spesifikasi: true,
-//         fasilitas: {
-//           include: { fasilitas: true },
-//         },
-//       },
-//     });
-
-//     res.json({ success: true, data: updated });
-//   } catch (error) {
-//     console.error("Error updating perumahan:", error);
-//     res.status(500).json({
-//       error: "Terjadi kesalahan saat mengupdate perumahan",
-//       detail: process.env.NODE_ENV === 'development' ? error.message : undefined
-//     });
-//   }
-// };
-
-
 // Delete Perumahan + cascade spesifikasi & fasilitas relation
 const deletePerumahan = async (req, res) => {
     const id = parseInt(req.params.id);
