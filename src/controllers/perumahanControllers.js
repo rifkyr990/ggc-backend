@@ -266,28 +266,28 @@ const getAllPerumahan = async (req, res) => {
       ? {
           nama: {
             contains: search,
-            mode: 'insensitive', // agar case-insensitive
+            mode: 'insensitive',
           },
         }
       : {};
 
     const [data, total] = await Promise.all([
       prisma.perumahan.findMany({
-  where,
-  skip: offset,
-  take: limit,
-  orderBy: {
-    createdAt: 'desc',
-  },
-  include: {
-    spesifikasi: true,
-    fasilitas: {
-      include: {
-        fasilitas: true,
+      where,
+      skip: offset,
+      take: limit,
+      orderBy: {
+        createdAt: 'desc',
       },
-    },
-  },
-}),
+      include: {
+        spesifikasi: true,
+        fasilitas: {
+          include: {
+            fasilitas: true,
+          },
+        },
+      },
+    }),
       prisma.perumahan.count({ where }),
     ]);
 
@@ -328,7 +328,7 @@ const getPerumahanById = async (req, res) => {
   }
 };
 
-// Update Perumahan + spesifikasi + fasilitas (replace semua fasilitas dan spesifikasi)
+
 // Delete Perumahan + cascade spesifikasi & fasilitas relation
 const deletePerumahan = async (req, res) => {
     const id = parseInt(req.params.id);
