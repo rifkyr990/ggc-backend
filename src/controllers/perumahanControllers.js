@@ -1,8 +1,7 @@
-const { PrismaClient } = require('@prisma/client');
+const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
-const streamifier = require('streamifier');
-const cloudinary = require('../utils/cloudinary'); // ✅ pastikan path benar
-
+const streamifier = require("streamifier");
+const cloudinary = require("../utils/cloudinary"); // ✅ pastikan path benar
 
 const uploadToCloudinary = (buffer, folder) => {
   return new Promise((resolve, reject) => {
@@ -17,23 +16,23 @@ const uploadToCloudinary = (buffer, folder) => {
   });
 };
 
-// CREATE
-
 const createPerumahan = async (req, res) => {
   try {
-    const {
-      nama,
-      lokasi,
-      hargaMulai,
-      deskripsi,
-      spesifikasi,
-      fasilitasIds,
-    } = req.body;
+    const { nama, lokasi, hargaMulai, deskripsi, spesifikasi, fasilitasIds } =
+      req.body;
 
     // Validasi data dasar
-    if (!nama || !lokasi || !hargaMulai || !deskripsi || !spesifikasi || !fasilitasIds) {
+    if (
+      !nama ||
+      !lokasi ||
+      !hargaMulai ||
+      !deskripsi ||
+      !spesifikasi ||
+      !fasilitasIds
+    ) {
       return res.status(400).json({
-        error: "Field wajib: nama, lokasi, hargaMulai, deskripsi, spesifikasi, fasilitasIds"
+        error:
+          "Field wajib: nama, lokasi, hargaMulai, deskripsi, spesifikasi, fasilitasIds",
       });
     }
 
@@ -41,36 +40,73 @@ const createPerumahan = async (req, res) => {
     let parsedSpesifikasi, parsedFasilitasIds;
 
     try {
-      parsedSpesifikasi = typeof spesifikasi === 'string' ? JSON.parse(spesifikasi) : spesifikasi;
-      if (typeof parsedSpesifikasi !== 'object' || Array.isArray(parsedSpesifikasi)) {
-        return res.status(400).json({ error: "Format spesifikasi harus berupa object" });
+      parsedSpesifikasi =
+        typeof spesifikasi === "string" ? JSON.parse(spesifikasi) : spesifikasi;
+      if (
+        typeof parsedSpesifikasi !== "object" ||
+        Array.isArray(parsedSpesifikasi)
+      ) {
+        return res
+          .status(400)
+          .json({ error: "Format spesifikasi harus berupa object" });
       }
+      // Konversi field numerik ke integer
+      if (parsedSpesifikasi.luasTanah)
+        parsedSpesifikasi.luasTanah = parseInt(parsedSpesifikasi.luasTanah);
+      if (parsedSpesifikasi.luasBangunan)
+        parsedSpesifikasi.luasBangunan = parseInt(
+          parsedSpesifikasi.luasBangunan
+        );
+      if (parsedSpesifikasi.kamarTidur)
+        parsedSpesifikasi.kamarTidur = parseInt(parsedSpesifikasi.kamarTidur);
+      if (parsedSpesifikasi.kamarMandi)
+        parsedSpesifikasi.kamarMandi = parseInt(parsedSpesifikasi.kamarMandi);
+      if (parsedSpesifikasi.listrik)
+        parsedSpesifikasi.listrik = String(parsedSpesifikasi.listrik);
     } catch (e) {
-      return res.status(400).json({ error: "Format spesifikasi tidak valid", detail: e.message });
+      return res
+        .status(400)
+        .json({ error: "Format spesifikasi tidak valid", detail: e.message });
     }
 
     // Parsing fasilitasIds
     try {
-      parsedFasilitasIds = typeof fasilitasIds === 'string' ? JSON.parse(fasilitasIds) : fasilitasIds;
+      parsedFasilitasIds =
+        typeof fasilitasIds === "string"
+          ? JSON.parse(fasilitasIds)
+          : fasilitasIds;
       if (!Array.isArray(parsedFasilitasIds)) {
-        return res.status(400).json({ error: "Format fasilitasIds harus berupa array" });
+        return res
+          .status(400)
+          .json({ error: "Format fasilitasIds harus berupa array" });
       }
     } catch (e) {
-      return res.status(400).json({ error: "Format fasilitasIds tidak valid", detail: e.message });
+      return res
+        .status(400)
+        .json({ error: "Format fasilitasIds tidak valid", detail: e.message });
     }
 
     // Validasi thumbnail
-    if (!req.files || !req.files['thumbnail'] || req.files['thumbnail'].length === 0) {
-      return res.status(400).json({ error: "Thumbnail wajib diupload" });
+    if (
+      !req.files ||
+      !req.files["thumbnail"] ||
+      req.files["thumbnail"].length === 0
+    ) {
+      return res.status(400).json({
+        error: "Thumbnail wajib diupload. Field file harus bernama 'thumbnail'",
+      });
     }
 
-    const thumbnailBuffer = req.files['thumbnail'][0].buffer;
-    const thumbnailUrl = await uploadToCloudinary(thumbnailBuffer, 'perumahan/thumbnail');
+    const thumbnailBuffer = req.files["thumbnail"][0].buffer;
+    const thumbnailUrl = await uploadToCloudinary(
+      thumbnailBuffer,
+      "perumahan/thumbnail"
+    );
 
-    const gambarLainnyaFiles = req.files['gambarLainnya'] || [];
+    const gambarLainnyaFiles = req.files["gambarLainnya"] || [];
     const gambarLainnyaUrls = await Promise.all(
-      gambarLainnyaFiles.map(file =>
-        uploadToCloudinary(file.buffer, 'perumahan/gambarLainnya')
+      gambarLainnyaFiles.map((file) =>
+        uploadToCloudinary(file.buffer, "perumahan/gambarLainnya")
       )
     );
 
@@ -90,25 +126,24 @@ const createPerumahan = async (req, res) => {
             luasBangunan: parsedSpesifikasi.luasBangunan,
             kamarTidur: parsedSpesifikasi.kamarTidur,
             kamarMandi: parsedSpesifikasi.kamarMandi,
-            garasi: parsedSpesifikasi.garasi,
             listrik: parsedSpesifikasi.listrik,
-          }
+          },
         },
 
         fasilitas: {
-          create: parsedFasilitasIds.map(fasilitasId => ({
+          create: parsedFasilitasIds.map((fasilitasId) => ({
             fasilitas: {
-              connect: { id: fasilitasId }
-            }
-          }))
-        }
+              connect: { id: fasilitasId },
+            },
+          })),
+        },
       },
       include: {
         spesifikasi: true,
         fasilitas: {
-          include: { fasilitas: true }
-        }
-      }
+          include: { fasilitas: true },
+        },
+      },
     });
 
     res.status(201).json({ success: true, data: perumahan });
@@ -116,24 +151,18 @@ const createPerumahan = async (req, res) => {
     console.error("Error creating perumahan:", error);
     res.status(500).json({
       error: "Terjadi kesalahan saat membuat perumahan",
-      detail: process.env.NODE_ENV === 'development' ? error.message : undefined
+      detail:
+        process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
-
 
 // UPDATE
 
 const updatePerumahan = async (req, res) => {
   try {
-    const {
-      nama,
-      lokasi,
-      hargaMulai,
-      deskripsi,
-      spesifikasi,
-      fasilitasIds,
-    } = req.body;
+    const { nama, lokasi, hargaMulai, deskripsi, spesifikasi, fasilitasIds } =
+      req.body;
 
     const { id } = req.params;
 
@@ -155,35 +184,54 @@ const updatePerumahan = async (req, res) => {
     let parsedSpesifikasi, parsedFasilitasIds;
 
     try {
-      parsedSpesifikasi = typeof spesifikasi === 'string' ? JSON.parse(spesifikasi) : spesifikasi;
-      if (parsedSpesifikasi && (typeof parsedSpesifikasi !== 'object' || Array.isArray(parsedSpesifikasi))) {
-        return res.status(400).json({ error: "Format spesifikasi harus berupa object" });
+      parsedSpesifikasi =
+        typeof spesifikasi === "string" ? JSON.parse(spesifikasi) : spesifikasi;
+      if (
+        parsedSpesifikasi &&
+        (typeof parsedSpesifikasi !== "object" ||
+          Array.isArray(parsedSpesifikasi))
+      ) {
+        return res
+          .status(400)
+          .json({ error: "Format spesifikasi harus berupa object" });
       }
     } catch (e) {
-      return res.status(400).json({ error: "Format spesifikasi tidak valid", detail: e.message });
+      return res
+        .status(400)
+        .json({ error: "Format spesifikasi tidak valid", detail: e.message });
     }
 
     try {
-      parsedFasilitasIds = typeof fasilitasIds === 'string' ? JSON.parse(fasilitasIds) : fasilitasIds;
+      parsedFasilitasIds =
+        typeof fasilitasIds === "string"
+          ? JSON.parse(fasilitasIds)
+          : fasilitasIds;
       if (parsedFasilitasIds && !Array.isArray(parsedFasilitasIds)) {
-        return res.status(400).json({ error: "Format fasilitasIds harus berupa array" });
+        return res
+          .status(400)
+          .json({ error: "Format fasilitasIds harus berupa array" });
       }
     } catch (e) {
-      return res.status(400).json({ error: "Format fasilitasIds tidak valid", detail: e.message });
+      return res
+        .status(400)
+        .json({ error: "Format fasilitasIds tidak valid", detail: e.message });
     }
 
     // Upload thumbnail jika ada file baru
     let thumbnailUrl = existingPerumahan.thumbnail;
-    if (req.files?.['thumbnail']?.[0]) {
-      thumbnailUrl = await uploadToCloudinary(req.files['thumbnail'][0].buffer, 'perumahan/thumbnail');
+    if (req.files?.["thumbnail"]?.[0]) {
+      thumbnailUrl = await uploadToCloudinary(
+        req.files["thumbnail"][0].buffer,
+        "perumahan/thumbnail"
+      );
     }
 
     // Upload gambar lainnya jika ada file baru
     let gambarLainnyaUrls = existingPerumahan.gambarLainnya;
-    if (req.files?.['gambarLainnya']?.length > 0) {
+    if (req.files?.["gambarLainnya"]?.length > 0) {
       gambarLainnyaUrls = await Promise.all(
-        req.files['gambarLainnya'].map(file =>
-          uploadToCloudinary(file.buffer, 'perumahan/gambarLainnya')
+        req.files["gambarLainnya"].map((file) =>
+          uploadToCloudinary(file.buffer, "perumahan/gambarLainnya")
         )
       );
     }
@@ -207,7 +255,6 @@ const updatePerumahan = async (req, res) => {
                   luasBangunan: parsedSpesifikasi.luasBangunan,
                   kamarTidur: parsedSpesifikasi.kamarTidur,
                   kamarMandi: parsedSpesifikasi.kamarMandi,
-                  garasi: parsedSpesifikasi.garasi,
                   listrik: parsedSpesifikasi.listrik,
                 },
                 create: {
@@ -215,17 +262,16 @@ const updatePerumahan = async (req, res) => {
                   luasBangunan: parsedSpesifikasi.luasBangunan,
                   kamarTidur: parsedSpesifikasi.kamarTidur,
                   kamarMandi: parsedSpesifikasi.kamarMandi,
-                  garasi: parsedSpesifikasi.garasi,
                   listrik: parsedSpesifikasi.listrik,
                 },
-              }
+              },
             }
           : undefined,
 
         fasilitas: parsedFasilitasIds
           ? {
               deleteMany: {}, // Hapus semua relasi lama
-              create: parsedFasilitasIds.map(fasilitasId => ({
+              create: parsedFasilitasIds.map((fasilitasId) => ({
                 fasilitasId: fasilitasId,
               })),
             }
@@ -244,15 +290,13 @@ const updatePerumahan = async (req, res) => {
     console.error("Error updating perumahan:", error);
     res.status(500).json({
       error: "Terjadi kesalahan saat mengupdate perumahan",
-      detail: process.env.NODE_ENV === 'development' ? error.message : undefined
+      detail:
+        process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
 
-
-
 // ERROR: PERBAIKI FASILITAS PADA UPDATE CONTROLLER
-
 
 // Read all Perumahan lengkap dengan relasi
 const getAllPerumahan = async (req, res) => {
@@ -260,34 +304,34 @@ const getAllPerumahan = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = 5; // jumlah item per halaman
     const offset = (page - 1) * limit;
-    const search = req.query.search || '';
+    const search = req.query.search || "";
 
     const where = search
       ? {
           nama: {
             contains: search,
-            mode: 'insensitive',
+            mode: "insensitive",
           },
         }
       : {};
 
     const [data, total] = await Promise.all([
       prisma.perumahan.findMany({
-      where,
-      skip: offset,
-      take: limit,
-      orderBy: {
-        createdAt: 'desc',
-      },
-      include: {
-        spesifikasi: true,
-        fasilitas: {
-          include: {
-            fasilitas: true,
+        where,
+        skip: offset,
+        take: limit,
+        orderBy: {
+          createdAt: "desc",
+        },
+        include: {
+          spesifikasi: true,
+          fasilitas: {
+            include: {
+              fasilitas: true,
+            },
           },
         },
-      },
-    }),
+      }),
       prisma.perumahan.count({ where }),
     ]);
 
@@ -300,11 +344,10 @@ const getAllPerumahan = async (req, res) => {
       currentPage: page,
     });
   } catch (err) {
-    console.error('Error getAllPerumahan:', err);
-    res.status(500).json({ error: 'Gagal mengambil data perumahan' });
+    console.error("Error getAllPerumahan:", err);
+    res.status(500).json({ error: "Gagal mengambil data perumahan" });
   }
 };
-
 
 // Read single Perumahan by id
 const getPerumahanById = async (req, res) => {
@@ -321,35 +364,37 @@ const getPerumahanById = async (req, res) => {
         },
       },
     });
-    if (!perumahan) return res.status(404).json({ error: 'Perumahan not found' });
+    if (!perumahan)
+      return res.status(404).json({ error: "Perumahan not found" });
     res.json(perumahan);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch perumahan' });
+    res.status(500).json({ error: "Failed to fetch perumahan" });
   }
 };
 
-
 // Delete Perumahan + cascade spesifikasi & fasilitas relation
 const deletePerumahan = async (req, res) => {
-    const id = parseInt(req.params.id);
-    try {
-        // Hapus spesifikasi dulu
-        await prisma.spesifikasiPerumahan.deleteMany({ where: { perumahanId: id } });
-        // Hapus fasilitas relation dulu
-        await prisma.fasilitasPerumahan.deleteMany({ where: { perumahanId: id } });
-        // Hapus perumahan
-        await prisma.perumahan.delete({ where: { id } });
+  const id = parseInt(req.params.id);
+  try {
+    // Hapus spesifikasi dulu
+    await prisma.spesifikasiPerumahan.deleteMany({
+      where: { perumahanId: id },
+    });
+    // Hapus fasilitas relation dulu
+    await prisma.fasilitasPerumahan.deleteMany({ where: { perumahanId: id } });
+    // Hapus perumahan
+    await prisma.perumahan.delete({ where: { id } });
 
-        res.json({ message: 'Perumahan deleted' });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to delete perumahan' });
-    }
+    res.json({ message: "Perumahan deleted" });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to delete perumahan" });
+  }
 };
 
 module.exports = {
-    createPerumahan,
-    getAllPerumahan,
-    getPerumahanById,
-    updatePerumahan,
-    deletePerumahan,
+  createPerumahan,
+  getAllPerumahan,
+  getPerumahanById,
+  updatePerumahan,
+  deletePerumahan,
 };

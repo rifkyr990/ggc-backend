@@ -48,7 +48,6 @@ model SpesifikasiPerumahan {
   luasBangunan    Int        // Contoh: 100 m²
   kamarTidur      Int        // Contoh: 3 kamar tidur
   kamarMandi      Int
-  garasi          Boolean
   listrik         String     // Contoh: "2200 Watt"
   // Relasi ke Perumahan
   perumahan       Perumahan @relation(fields: [perumahanId], references: [id])
