@@ -18,13 +18,14 @@ const uploadToCloudinary = (buffer, folder) => {
 
 const createPerumahan = async (req, res) => {
   try {
-    const { nama, lokasi, hargaMulai, deskripsi, spesifikasi, fasilitasIds } =
+    const { nama, lokasi, type, hargaMulai, deskripsi, spesifikasi, fasilitasIds } =
       req.body;
 
     // Validasi data dasar
     if (
       !nama ||
       !lokasi ||
+      !type |
       !hargaMulai ||
       !deskripsi ||
       !spesifikasi ||
@@ -32,7 +33,7 @@ const createPerumahan = async (req, res) => {
     ) {
       return res.status(400).json({
         error:
-          "Field wajib: nama, lokasi, hargaMulai, deskripsi, spesifikasi, fasilitasIds",
+          "Field wajib: nama, lokasi, hargaMulai, deskripsi, spesifikasi, fasilitasIds, type",
       });
     }
 
@@ -117,6 +118,7 @@ const createPerumahan = async (req, res) => {
         lokasi,
         hargaMulai: parseInt(hargaMulai),
         deskripsi,
+        type,
         thumbnail: thumbnailUrl,
         gambarLainnya: gambarLainnyaUrls,
 
@@ -161,7 +163,7 @@ const createPerumahan = async (req, res) => {
 
 const updatePerumahan = async (req, res) => {
   try {
-    const { nama, lokasi, hargaMulai, deskripsi, spesifikasi, fasilitasIds } =
+    const { nama, lokasi, type, hargaMulai, deskripsi, spesifikasi, fasilitasIds } =
       req.body;
 
     const { id } = req.params;
@@ -244,6 +246,7 @@ const updatePerumahan = async (req, res) => {
         lokasi,
         hargaMulai: hargaMulai ? parseInt(hargaMulai) : undefined,
         deskripsi,
+        type,
         thumbnail: thumbnailUrl,
         gambarLainnya: gambarLainnyaUrls,
 

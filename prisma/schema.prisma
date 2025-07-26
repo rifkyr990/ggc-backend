@@ -34,6 +34,7 @@ model Perumahan {
   lokasi          String
   hargaMulai      Int
   thumbnail       String
+  type            String?
   gambarLainnya String[]
   deskripsi       String
   spesifikasi     SpesifikasiPerumahan? // Relasi one-to-one
@@ -72,4 +73,17 @@ model FasilitasPerumahan {
   fasilitasId  Int
 
   @@unique([perumahanId, fasilitasId]) // Hindari duplikasi
+}
+
+model LowonganPekerjaan {
+  id          Int      @id @default(autoincrement())
+  posisi      String   // Contoh: "Backend Engineer"
+  perusahaan  String   // Contoh: "PT Inovasi Digital"
+  lokasi      String   // Contoh: "Surabaya / Remote"
+  deskripsi   String   // Penjelasan lengkap pekerjaan
+  kualifikasi String   // Syarat / kemampuan yang dibutuhkan
+  jenis       String   // Fulltime / Freelance / Magang
+  gaji        String?  // Opsional, contoh: "Rp 5-8jt"
+  deadline    DateTime // Tanggal terakhir apply
+  createdAt   DateTime @default(now())
 }
