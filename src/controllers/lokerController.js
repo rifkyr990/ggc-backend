@@ -1,153 +1,130 @@
-const {
-    PrismaClient
-} = require("@prisma/client");
+const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
-// ✅ Ambil semua lowongan
+// GET all
 const getLoker = async (req, res) => {
     try {
         const loker = await prisma.lowonganPekerjaan.findMany({
             orderBy: {
-                createdAt: 'desc'
+                createdAt: "desc",
             },
         });
         res.status(200).json(loker);
     } catch (error) {
-        res.status(500).json({
-            error: "Gagal mengambil data lowongan"
-        });
+        console.error(error);
+        res.status(500).json({ error: "Gagal mengambil data lowongan" });
     }
 };
 
-// ✅ Ambil satu lowongan berdasarkan ID
+// GET by ID
 const getLokerById = async (req, res) => {
-    const {
-        id
-    } = req.params;
+    const { id } = req.params;
     try {
         const loker = await prisma.lowonganPekerjaan.findUnique({
-            where: {
-                id: parseInt(id)
-            },
+        where: { id: parseInt(id) },
         });
 
         if (!loker) {
-            return res.status(404).json({
-                error: "Lowongan tidak ditemukan"
-            });
+        return res.status(404).json({ error: "Lowongan tidak ditemukan" });
         }
 
         res.status(200).json(loker);
     } catch (error) {
-        res.status(500).json({
-            error: "Terjadi kesalahan saat mengambil data"
-        });
+        console.error(error);
+        res.status(500).json({ error: "Terjadi kesalahan saat mengambil data" });
     }
 };
 
-// ✅ Tambah lowongan baru
+// POST create
 const createLoker = async (req, res) => {
-    const {
+  const {
+    posisi,
+    perusahaan, // Optional karena ada default di schema
+    lokasi,
+    deskripsi,
+    kualifikasi,
+    jenis,
+    gaji,
+    deadline,
+  } = req.body;
+
+  try {
+    const newLoker = await prisma.lowonganPekerjaan.create({
+      data: {
         posisi,
-        perusahaan,
+        perusahaan: perusahaan || undefined, // default akan dipakai jika tidak dikirim
         lokasi,
         deskripsi,
         kualifikasi,
         jenis,
-        gaji,
-        deadline
-    } = req.body;
+        gaji: gaji ? parseInt(gaji) : null,
+        deadline: deadline ? new Date(deadline) : null,
+      },
+    });
 
-    try {
-        const newLoker = await prisma.lowonganPekerjaan.create({
-            data: {
-                posisi,
-                perusahaan,
-                lokasi,
-                deskripsi,
-                kualifikasi,
-                jenis,
-                gaji,
-                deadline: new Date(deadline),
-            },
-        });
-
-        res.status(201).json(newLoker);
-    } catch (error) {
-        res.status(500).json({
-            error: "Gagal menambahkan lowongan"
-        });
-    }
+    res.status(201).json(newLoker);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Gagal menambahkan lowongan" });
+  }
 };
 
-// ✅ Update lowongan berdasarkan ID
+// PUT update
 const updateLoker = async (req, res) => {
-    const {
-        id
-    } = req.params;
-    const {
+  const { id } = req.params;
+  const {
+    posisi,
+    perusahaan,
+    lokasi,
+    deskripsi,
+    kualifikasi,
+    jenis,
+    gaji,
+    deadline,
+  } = req.body;
+
+  try {
+    const updated = await prisma.lowonganPekerjaan.update({
+      where: { id: parseInt(id) },
+      data: {
         posisi,
         perusahaan,
         lokasi,
         deskripsi,
         kualifikasi,
         jenis,
-        gaji,
-        deadline
-    } = req.body;
+        gaji: gaji ? parseInt(gaji) : null,
+        deadline: deadline ? new Date(deadline) : null,
+      },
+    });
 
-    try {
-        const updated = await prisma.lowonganPekerjaan.update({
-            where: {
-                id: parseInt(id)
-            },
-            data: {
-                posisi,
-                perusahaan,
-                lokasi,
-                deskripsi,
-                kualifikasi,
-                jenis,
-                gaji,
-                deadline: new Date(deadline),
-            },
-        });
-
-        res.status(200).json(updated);
-    } catch (error) {
-        res.status(500).json({
-            error: "Gagal mengupdate lowongan"
-        });
-    }
+    res.status(200).json(updated);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Gagal mengupdate lowongan" });
+  }
 };
 
-// ✅ Hapus lowongan berdasarkan ID
+// DELETE
 const deleteLoker = async (req, res) => {
-    const {
-        id
-    } = req.params;
+  const { id } = req.params;
 
-    try {
-        await prisma.lowonganPekerjaan.delete({
-            where: {
-                id: parseInt(id)
-            },
-        });
+  try {
+    await prisma.lowonganPekerjaan.delete({
+      where: { id: parseInt(id) },
+    });
 
-        res.status(200).json({
-            message: "Lowongan berhasil dihapus"
-        });
-    } catch (error) {
-        res.status(500).json({
-            error: "Gagal menghapus lowongan"
-        });
-    }
+    res.status(200).json({ message: "Lowongan berhasil dihapus" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Gagal menghapus lowongan" });
+  }
 };
 
 module.exports = {
-    getLoker,
-    getLokerById,
-    createLoker,
-    updateLoker,
-    deleteLoker,
+  getLoker,
+  getLokerById,
+  createLoker,
+  updateLoker,
+  deleteLoker,
 };

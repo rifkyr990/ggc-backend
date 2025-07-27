@@ -5,7 +5,7 @@ const upload = require('../middleware/uploadCloudinary');
 
 router.get('/', perumahanController.getAllPerumahan);
 router.get('/filter', perumahanController.filterPerumahan); // ⬅ duluan
-router.get('/:id', perumahanController.getPerumahanById);   // ⬅ belakangan
+router.get("/:slug", perumahanController.getPerumahanBySlug);
 router.post(
   '/create',
   upload.fields([

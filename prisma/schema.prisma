@@ -78,13 +78,16 @@ model FasilitasPerumahan {
 model LowonganPekerjaan {
   id          Int      @id @default(autoincrement())
   posisi      String   
-  perusahaan  String 
+  perusahaan  String   @default("PT. Gloria Graha Group")
   lokasi      String   
   deskripsi   String   
   kualifikasi String   
-  gaji        String?  
+  gaji        Int?
+  deadline    DateTime?
+  jenis       String
   createdAt   DateTime @default(now())
 }
+
 
 model Visitor {
   id        Int      @id @default(autoincrement())

@@ -351,11 +351,12 @@ const getAllPerumahan = async (req, res) => {
 };
 
 // Read single Perumahan by id
-const getPerumahanById = async (req, res) => {
-  const id = parseInt(req.params.id);
+const getPerumahanBySlug = async (req, res) => {
+  const { slug } = req.params;
+
   try {
     const perumahan = await prisma.perumahan.findUnique({
-      where: { id },
+      where: { slug },
       include: {
         spesifikasi: true,
         fasilitas: {
@@ -365,13 +366,18 @@ const getPerumahanById = async (req, res) => {
         },
       },
     });
-    if (!perumahan)
+
+    if (!perumahan) {
       return res.status(404).json({ error: "Perumahan not found" });
+    }
+
     res.json(perumahan);
   } catch (error) {
+    console.error("Failed to fetch perumahan by slug:", error);
     res.status(500).json({ error: "Failed to fetch perumahan" });
   }
 };
+
 
 // Delete Perumahan + cascade spesifikasi & fasilitas relation
 const deletePerumahan = async (req, res) => {
@@ -479,7 +485,7 @@ module.exports = {
   createPerumahan,
   getAllPerumahan,
   filterPerumahan,
-  getPerumahanById,
+  getPerumahanBySlug,
   updatePerumahan,
   deletePerumahan,
 };
