@@ -72,18 +72,22 @@ model FasilitasPerumahan {
   perumahanId  Int
   fasilitasId  Int
 
-  @@unique([perumahanId, fasilitasId]) // Hindari duplikasi
+  @@unique([perumahanId, fasilitasId])
 }
 
 model LowonganPekerjaan {
   id          Int      @id @default(autoincrement())
-  posisi      String   // Contoh: "Backend Engineer"
-  perusahaan  String   // Contoh: "PT Inovasi Digital"
-  lokasi      String   // Contoh: "Surabaya / Remote"
-  deskripsi   String   // Penjelasan lengkap pekerjaan
-  kualifikasi String   // Syarat / kemampuan yang dibutuhkan
-  jenis       String   // Fulltime / Freelance / Magang
-  gaji        String?  // Opsional, contoh: "Rp 5-8jt"
-  deadline    DateTime // Tanggal terakhir apply
+  posisi      String   
+  perusahaan  String 
+  lokasi      String   
+  deskripsi   String   
+  kualifikasi String   
+  gaji        String?  
   createdAt   DateTime @default(now())
+}
+
+model Visitor {
+  id        Int      @id @default(autoincrement())
+  ip        String
+  visitedAt DateTime @default(now())
 }

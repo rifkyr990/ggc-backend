@@ -299,13 +299,11 @@ const updatePerumahan = async (req, res) => {
   }
 };
 
-// ERROR: PERBAIKI FASILITAS PADA UPDATE CONTROLLER
-
 // Read all Perumahan lengkap dengan relasi
 const getAllPerumahan = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = 5; // jumlah item per halaman
+    const limit = 6;
     const offset = (page - 1) * limit;
     const search = req.query.search || "";
 
@@ -394,9 +392,93 @@ const deletePerumahan = async (req, res) => {
   }
 };
 
+const filterPerumahan = async (req, res) => {
+  try {
+    const { nama, type, hargaMin, hargaMax, fasilitasIds } = req.query;
+
+    const where = {};
+
+    if (nama) {
+      where.nama = {
+        contains: nama,
+        mode: "insensitive",
+      };
+    }
+
+    if (type) {
+      where.type = {
+        equals: type,
+        mode: "insensitive",
+      };
+    }
+
+    if (hargaMin || hargaMax) {
+      where.hargaMulai = {};
+      if (hargaMin) where.hargaMulai.gte = parseInt(hargaMin);
+      if (hargaMax) where.hargaMulai.lte = parseInt(hargaMax);
+    }
+
+    // fasilitasIds diharapkan berupa string JSON array, contoh: fasilitasIds=[1,2,3]
+    let fasilitasFilter = {};
+    if (fasilitasIds) {
+      let parsedFasilitasIds;
+      try {
+        parsedFasilitasIds =
+          typeof fasilitasIds === "string"
+            ? JSON.parse(fasilitasIds)
+            : fasilitasIds;
+
+        if (!Array.isArray(parsedFasilitasIds)) {
+          return res.status(400).json({ error: "Format fasilitasIds harus berupa array" });
+        }
+      } catch (e) {
+        return res.status(400).json({ error: "Format fasilitasIds tidak valid", detail: e.message });
+      }
+
+      fasilitasFilter = {
+        some: {
+          fasilitasId: {
+            in: parsedFasilitasIds,
+          },
+        },
+      };
+    }
+
+    const perumahanList = await prisma.perumahan.findMany({
+      where: {
+        ...where,
+        ...(fasilitasIds ? { fasilitas: fasilitasFilter } : {}),
+      },
+      include: {
+        spesifikasi: true,
+        fasilitas: {
+          include: {
+            fasilitas: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    res.json({
+      success: true,
+      data: perumahanList,
+      total: perumahanList.length,
+    });
+  } catch (error) {
+    console.error("Error filterPerumahan:", error);
+    res.status(500).json({ error: "Terjadi kesalahan saat memfilter perumahan" });
+  }
+};
+
+
+
 module.exports = {
   createPerumahan,
   getAllPerumahan,
+  filterPerumahan,
   getPerumahanById,
   updatePerumahan,
   deletePerumahan,
