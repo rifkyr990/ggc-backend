@@ -2,13 +2,13 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 
-const userRoutes = require("./routes/user");
-const authRoutes = require("./routes/auth");
-const perumahanRoutes = require("./routes/perumahan");
-const articlesRoutes = require("./routes/article");
-const fasilitasRoutes = require("./routes/fasilitas");
-const lokerRoutes = require("./routes/loker");
-const visitorRoutes = require("./routes/visitor");
+const userRoutes = require("./src/routes/user");
+const authRoutes = require("./src/routes/auth");
+const perumahanRoutes = require("./src/routes/perumahan");
+const articlesRoutes = require("./src/routes/article");
+const fasilitasRoutes = require("./src/routes/fasilitas");
+const lokerRoutes = require("./src/routes/loker");
+const visitorRoutes = require("./src/routes/visitor");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
