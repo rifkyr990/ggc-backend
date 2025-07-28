@@ -1,7 +1,11 @@
 const { PrismaClient } = require("@prisma/client");
+const bcrypt = require('bcrypt');
+
 const prisma = new PrismaClient();
 
+
 async function main() {
+  const hashedPassword = await bcrypt.hash("123admin", 10);
   // 1. Tambahkan Fasilitas
   const fasilitasData = [
     { nama: "Kolam Renang", iconUrl: "https://example.com/icons/pool.png" },
@@ -18,11 +22,13 @@ async function main() {
   }
 
   // 2. Tambahkan User
-  const admin = await prisma.user.create({
-    data: {
+  const admin = await prisma.user.upsert({
+    where: { email: "admin@gmail.com" },
+    update: {},
+    create: {
       name: "admin",
       email: "admin@gmail.com",
-      password: "123admin",
+      password: hashedPassword,
     },
   });
 
