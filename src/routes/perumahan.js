@@ -4,22 +4,23 @@ const perumahanController = require('../controllers/perumahanControllers');
 const upload = require('../middleware/uploadCloudinary');
 
 router.get('/', perumahanController.getAllPerumahan);
-router.get('/:id', perumahanController.getPerumahanById);
+router.get('/filter', perumahanController.filterPerumahan); // ⬅ duluan
+router.get("/:slug", perumahanController.getPerumahanBySlug);
 router.post(
-    '/create',
-    upload.fields([
-        { name: 'thumbnail', maxCount: 1 },
-        { name: 'gambarLainnya', maxCount: 10 },
-    ]),
-    perumahanController.createPerumahan
+  '/create',
+  upload.fields([
+    { name: 'thumbnail', maxCount: 1 },
+    { name: 'gambarLainnya', maxCount: 10 },
+  ]),
+  perumahanController.createPerumahan
 );
 router.put(
-    '/:id',
-    upload.fields([
-        { name: 'thumbnail', maxCount: 1 },
-        { name: 'gambarLainnya', maxCount: 5 },
-    ]),
-    perumahanController.updatePerumahan
+  '/:id',
+  upload.fields([
+    { name: 'thumbnail', maxCount: 1 },
+    { name: 'gambarLainnya', maxCount: 5 },
+  ]),
+  perumahanController.updatePerumahan
 );
 router.delete('/:id', perumahanController.deletePerumahan);
 

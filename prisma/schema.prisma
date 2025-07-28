@@ -34,6 +34,7 @@ model Perumahan {
   lokasi          String
   hargaMulai      Int
   thumbnail       String
+  type            String?
   gambarLainnya String[]
   deskripsi       String
   spesifikasi     SpesifikasiPerumahan? // Relasi one-to-one
@@ -71,5 +72,25 @@ model FasilitasPerumahan {
   perumahanId  Int
   fasilitasId  Int
 
-  @@unique([perumahanId, fasilitasId]) // Hindari duplikasi
+  @@unique([perumahanId, fasilitasId])
+}
+
+model LowonganPekerjaan {
+  id          Int      @id @default(autoincrement())
+  posisi      String   
+  perusahaan  String   @default("PT. Gloria Graha Group")
+  lokasi      String   
+  deskripsi   String   
+  kualifikasi String   
+  gaji        Int?
+  deadline    DateTime?
+  jenis       String
+  createdAt   DateTime @default(now())
+}
+
+
+model Visitor {
+  id        Int      @id @default(autoincrement())
+  ip        String
+  visitedAt DateTime @default(now())
 }

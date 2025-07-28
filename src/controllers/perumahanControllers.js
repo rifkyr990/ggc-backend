@@ -18,13 +18,14 @@ const uploadToCloudinary = (buffer, folder) => {
 
 const createPerumahan = async (req, res) => {
   try {
-    const { nama, lokasi, hargaMulai, deskripsi, spesifikasi, fasilitasIds } =
+    const { nama, lokasi, type, hargaMulai, deskripsi, spesifikasi, fasilitasIds } =
       req.body;
 
     // Validasi data dasar
     if (
       !nama ||
       !lokasi ||
+      !type |
       !hargaMulai ||
       !deskripsi ||
       !spesifikasi ||
@@ -32,7 +33,7 @@ const createPerumahan = async (req, res) => {
     ) {
       return res.status(400).json({
         error:
-          "Field wajib: nama, lokasi, hargaMulai, deskripsi, spesifikasi, fasilitasIds",
+          "Field wajib: nama, lokasi, hargaMulai, deskripsi, spesifikasi, fasilitasIds, type",
       });
     }
 
@@ -117,6 +118,7 @@ const createPerumahan = async (req, res) => {
         lokasi,
         hargaMulai: parseInt(hargaMulai),
         deskripsi,
+        type,
         thumbnail: thumbnailUrl,
         gambarLainnya: gambarLainnyaUrls,
 
@@ -161,7 +163,7 @@ const createPerumahan = async (req, res) => {
 
 const updatePerumahan = async (req, res) => {
   try {
-    const { nama, lokasi, hargaMulai, deskripsi, spesifikasi, fasilitasIds } =
+    const { nama, lokasi, type, hargaMulai, deskripsi, spesifikasi, fasilitasIds } =
       req.body;
 
     const { id } = req.params;
@@ -244,6 +246,7 @@ const updatePerumahan = async (req, res) => {
         lokasi,
         hargaMulai: hargaMulai ? parseInt(hargaMulai) : undefined,
         deskripsi,
+        type,
         thumbnail: thumbnailUrl,
         gambarLainnya: gambarLainnyaUrls,
 
@@ -296,13 +299,11 @@ const updatePerumahan = async (req, res) => {
   }
 };
 
-// ERROR: PERBAIKI FASILITAS PADA UPDATE CONTROLLER
-
 // Read all Perumahan lengkap dengan relasi
 const getAllPerumahan = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = 5; // jumlah item per halaman
+    const limit = 6;
     const offset = (page - 1) * limit;
     const search = req.query.search || "";
 
@@ -350,11 +351,12 @@ const getAllPerumahan = async (req, res) => {
 };
 
 // Read single Perumahan by id
-const getPerumahanById = async (req, res) => {
-  const id = parseInt(req.params.id);
+const getPerumahanBySlug = async (req, res) => {
+  const { slug } = req.params;
+
   try {
     const perumahan = await prisma.perumahan.findUnique({
-      where: { id },
+      where: { slug },
       include: {
         spesifikasi: true,
         fasilitas: {
@@ -364,13 +366,18 @@ const getPerumahanById = async (req, res) => {
         },
       },
     });
-    if (!perumahan)
+
+    if (!perumahan) {
       return res.status(404).json({ error: "Perumahan not found" });
+    }
+
     res.json(perumahan);
   } catch (error) {
+    console.error("Failed to fetch perumahan by slug:", error);
     res.status(500).json({ error: "Failed to fetch perumahan" });
   }
 };
+
 
 // Delete Perumahan + cascade spesifikasi & fasilitas relation
 const deletePerumahan = async (req, res) => {
@@ -391,10 +398,94 @@ const deletePerumahan = async (req, res) => {
   }
 };
 
+const filterPerumahan = async (req, res) => {
+  try {
+    const { nama, type, hargaMin, hargaMax, fasilitasIds } = req.query;
+
+    const where = {};
+
+    if (nama) {
+      where.nama = {
+        contains: nama,
+        mode: "insensitive",
+      };
+    }
+
+    if (type) {
+      where.type = {
+        equals: type,
+        mode: "insensitive",
+      };
+    }
+
+    if (hargaMin || hargaMax) {
+      where.hargaMulai = {};
+      if (hargaMin) where.hargaMulai.gte = parseInt(hargaMin);
+      if (hargaMax) where.hargaMulai.lte = parseInt(hargaMax);
+    }
+
+    // fasilitasIds diharapkan berupa string JSON array, contoh: fasilitasIds=[1,2,3]
+    let fasilitasFilter = {};
+    if (fasilitasIds) {
+      let parsedFasilitasIds;
+      try {
+        parsedFasilitasIds =
+          typeof fasilitasIds === "string"
+            ? JSON.parse(fasilitasIds)
+            : fasilitasIds;
+
+        if (!Array.isArray(parsedFasilitasIds)) {
+          return res.status(400).json({ error: "Format fasilitasIds harus berupa array" });
+        }
+      } catch (e) {
+        return res.status(400).json({ error: "Format fasilitasIds tidak valid", detail: e.message });
+      }
+
+      fasilitasFilter = {
+        some: {
+          fasilitasId: {
+            in: parsedFasilitasIds,
+          },
+        },
+      };
+    }
+
+    const perumahanList = await prisma.perumahan.findMany({
+      where: {
+        ...where,
+        ...(fasilitasIds ? { fasilitas: fasilitasFilter } : {}),
+      },
+      include: {
+        spesifikasi: true,
+        fasilitas: {
+          include: {
+            fasilitas: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    res.json({
+      success: true,
+      data: perumahanList,
+      total: perumahanList.length,
+    });
+  } catch (error) {
+    console.error("Error filterPerumahan:", error);
+    res.status(500).json({ error: "Terjadi kesalahan saat memfilter perumahan" });
+  }
+};
+
+
+
 module.exports = {
   createPerumahan,
   getAllPerumahan,
-  getPerumahanById,
+  filterPerumahan,
+  getPerumahanBySlug,
   updatePerumahan,
   deletePerumahan,
 };
