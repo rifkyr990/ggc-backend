@@ -17,9 +17,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: 'https://ggc-frontend.vercel.app/',
+    credentials: true, 
   })
 );
+
 
 app.use("/users", userRoutes);
 app.use("/auth", authRoutes);
