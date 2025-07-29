@@ -13,27 +13,46 @@ const visitorRoutes = require("./src/routes/visitor");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// ✅ CORS allow multiple origins
+const allowedOrigins = [
+  'http://localhost:3000',                 // local dev
+  'https://ggc-frontend.vercel.app'        // production vercel
+];
+
 app.use(
   cors({
-    origin: 'https://ggc-frontend.vercel.app/',
-    credentials: true, 
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like curl, Postman)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      } else {
+        return callback(new Error('Not allowed by CORS'));
+      }
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    credentials: true,
   })
 );
 
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
+// ✅ Routes
 app.use("/users", userRoutes);
 app.use("/auth", authRoutes);
 app.use("/articles", articlesRoutes);
 app.use("/perumahan", perumahanRoutes);
 app.use("/fasilitas", fasilitasRoutes);
-app.use('/lowongan', lokerRoutes);
-app.use('/visitors', visitorRoutes);
+app.use("/lowongan", lokerRoutes);
+app.use("/visitors", visitorRoutes);
 
-app.get("/", async (req, res) => {
-  res.send("Hello from Express + TypeScript + Prisma!");
+// ✅ Basic route
+app.get("/", (req, res) => {
+  res.send("Hello from Express + Prisma!");
 });
+
+// ✅ Start server
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
