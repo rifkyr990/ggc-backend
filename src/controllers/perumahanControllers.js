@@ -400,7 +400,10 @@ const deletePerumahan = async (req, res) => {
 
 const filterPerumahan = async (req, res) => {
   try {
-    const { nama, type, hargaMin, hargaMax, fasilitasIds } = req.query;
+    const { nama, type, hargaMin, hargaMax, fasilitasIds, page = 1, limit = 6 } = req.query;
+
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
 
     const where = {};
 
@@ -450,6 +453,15 @@ const filterPerumahan = async (req, res) => {
       };
     }
 
+    // Hitung total data yang cocok (tanpa pagination)
+    const total = await prisma.perumahan.count({
+      where: {
+        ...where,
+        ...(fasilitasIds ? { fasilitas: fasilitasFilter } : {}),
+      },
+    });
+
+    // Ambil data dengan pagination
     const perumahanList = await prisma.perumahan.findMany({
       where: {
         ...where,
@@ -466,12 +478,18 @@ const filterPerumahan = async (req, res) => {
       orderBy: {
         createdAt: "desc",
       },
+      skip: (pageNum - 1) * limitNum,
+      take: limitNum,
     });
+
+    const totalPages = Math.ceil(total / limitNum);
 
     res.json({
       success: true,
       data: perumahanList,
-      total: perumahanList.length,
+      total,
+      totalPages,
+      currentPage: pageNum,
     });
   } catch (error) {
     console.error("Error filterPerumahan:", error);
