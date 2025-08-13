@@ -17,7 +17,7 @@ const PORT = process.env.PORT || 3000;
 const allowedOrigins = [
   'http://localhost:3000',                 // local dev
   'https://grahagloriagroup.vercel.app',
-  'https://grahagloriagroup.com/' // production vercel
+  'https://grahagloriagroup.com' // production vercel
 ];
 
 app.use(
