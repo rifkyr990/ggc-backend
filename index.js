@@ -16,7 +16,8 @@ const PORT = process.env.PORT || 3000;
 // ✅ CORS allow multiple origins
 const allowedOrigins = [
   'http://localhost:3000',                 // local dev
-  'https://grahagloriagroup.vercel.app'        // production vercel
+  'https://grahagloriagroup.vercel.app',
+  'https://grahagloriagroup.com/' // production vercel
 ];
 
 app.use(
